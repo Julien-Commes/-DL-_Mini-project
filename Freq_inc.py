@@ -3,13 +3,14 @@ import torch
 import torch.nn as nn
 import sys
 import matplotlib.pyplot as plt
-from PIL import Image
 import torchvision.transforms as transforms
+from slice_vid import slice_video
 
-# Charger une image à l'aide de PIL
-image_path = 'DB/Train/images.jpg'
-image = Image.open(image_path)
+# Charger une image à l'aide de slice_vid
+frames=slice_video('video_test.mp4')
 
+print(len(frames))
+'''
 # Transformer l'image en un tenseur PyTorch
 preprocess = transforms.Compose([
     transforms.ToTensor(),  # Convertir l'image PIL en un tenseur PyTorch
@@ -60,3 +61,4 @@ def train(mod):
 mod=Mod(h)
 print("nparms",sum(p.numel() for p in mod.parameters() if p.requires_grad),file=sys.stderr)
 train(mod)
+'''
