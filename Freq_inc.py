@@ -9,23 +9,38 @@ from slice_vid import slice_video
 # Charger une image à l'aide de slice_vid
 frames=slice_video('video_test.mp4')
 
-print(len(frames))
-'''
-# Transformer l'image en un tenseur PyTorch
-preprocess = transforms.Compose([
-    transforms.ToTensor(),  # Convertir l'image PIL en un tenseur PyTorch
-])
+# Isole uniquement 5 frames pour la partie débuggage du réseau
+frames=frames[:5]
 
-input_tensor = preprocess(image)
-print(input_tensor.shape)  # Vérifier la forme du tenseur
+if len(frames)<3:
+    print("La vidéo ne contient pas assez de frames")
+    exit()
+
+if len(frames)%2==0:
+    frames.pop()
+
+y=[]
+X=[]
+i=0
+for frame in frames :
+    i+=1
+    if i%2!=0:
+        X.append(frame)
+    else :
+        y.append(frame)
+
+X_frames_tensor=torch.tensor(X)
+y_frames_tensor=torch.tensor(y)
+
+print(X_frames_tensor.shape,y_frames_tensor.shape)
 
 nepochs=10
-Nbsortie=5
+Nbsortie=2
 
 crit = nn.MSELoss()
 
 class Mod(nn.Module):
-    def __init__(self,nhid):
+    def __init__(self):
         super(Mod, self).__init__()
         self.cnn = nn.Conv3d(in_channels=1, out_channels=Nbsortie, kernel_size=(3,3,3), stride=1, padding=(1,1,1))
 
@@ -33,14 +48,13 @@ class Mod(nn.Module):
         y=self.cnn(x)
         return y
 
-def train(mod):
+def train(mod,data,target):
     optim = torch.optim.Adam(mod.parameters(), lr=0.001)
     for epoch in range(nepochs):
-        inputs, goldy = data
+        inputs, goldy = data , target
         optim.zero_grad()
         haty = mod(inputs)
         loss = crit(haty,goldy)
-        nbatch += 1
         loss.backward()
         optim.step()
         print("err", loss)
@@ -58,7 +72,7 @@ def train(mod):
     
         plt.show() 
 
-mod=Mod(h)
-print("nparms",sum(p.numel() for p in mod.parameters() if p.requires_grad),file=sys.stderr)
-train(mod)
-'''
+mod=Mod()
+#print("nparms",sum(p.numel() for p in mod.parameters() if p.requires_grad),file=sys.stderr)
+#train(mod)
+print(mod(X_frames_tensor))
