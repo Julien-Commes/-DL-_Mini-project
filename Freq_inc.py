@@ -1,18 +1,15 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import sys
 import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
 from slice_vid import slice_video
 import cv2
-import torch.nn.functional as F
 
 # Charger une image à l'aide de slice_vid
 frames=slice_video('video_test.mp4')
 
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-frames=frames[:5]
+frames=frames[:7]
 
 if len(frames)<3:
     print("La vidéo ne contient pas assez de frames")
@@ -31,15 +28,15 @@ for frame in frames :
     else :
         y.append(frame)
 
-X_frames=np.array(X)
+X_frames=[]
+for k in range(len(X)-1):
+    pair=[X[k],X[k+1]]
+    X_frames.append(pair)
+
+X_frames=np.array(X_frames)
 y_frames=np.array(y)
 X_frames_tensor=torch.tensor(X_frames).float()
 y_frames_tensor=torch.tensor(y_frames).float()
-
-print(X_frames_tensor.shape,y_frames_tensor.shape)
-
-nepochs=10
-Nbsortie=2
 
 crit = nn.MSELoss()
 
@@ -75,6 +72,7 @@ class Mod(nn.Module):
         )
 
     def forward(self, x):
+        x = x.permute(0, 4, 1, 2, 3)
         x1 = self.encoder(x)
         x2 = self.bottleneck(x1)
         x3 = self.decoder(torch.cat([x1, x2], dim=1))
@@ -84,25 +82,21 @@ class Mod(nn.Module):
 def train(mod,data,target,nepochs):
     optim = torch.optim.Adam(mod.parameters(), lr=0.001)
     inputs, goldys = data , target
+    goldys = goldys.permute(0,3,1,2)
     for epoch in range(nepochs):
         optim.zero_grad()
-        loss=0
-        for k in range(len(data)-1):
-            input=inputs[k:k+2].unsqueeze(0)
-            haty = mod(input.permute(0, 4, 1, 2, 3))
-            goldy = goldys[k].unsqueeze(0)
-            goldy = goldy.permute(0,3,1,2)
-            loss += crit(haty,goldy)
-        loss/=len(data)
-        print("err", loss)
+        haty = mod(inputs)
+        loss = crit(haty,goldys)
+        print(f"err de : {loss} à la {epoch+1}e epoch")
         loss.backward()
         optim.step()
 
 mod=Mod(3,3)
 #print("nparms",sum(p.numel() for p in mod.parameters() if p.requires_grad),file=sys.stderr)
-train(mod,X_frames_tensor, y_frames_tensor, 10)
-output = mod(X_frames_tensor[0:2].unsqueeze(0).permute(0, 4, 1, 2, 3))
-output=output.permute(0,2,3,1)
+nepochs=50
+train(mod,X_frames_tensor, y_frames_tensor, nepochs)
+output = mod(X_frames_tensor)
+output = output.permute(0,2,3,1)
 output_np = output.cpu().detach().numpy()
 
 # Échelle des valeurs pour les images en uint8 (0-255)
