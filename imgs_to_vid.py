@@ -38,7 +38,6 @@ def slice_video(video_path):
     return frames, frame_width, frame_height, fps, fourcc
 
 frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
-print(frame_width, frame_height, fps)
 
 def write_video(video_path, output, frame_width, frame_height, fps, fourcc):
     # Output setup

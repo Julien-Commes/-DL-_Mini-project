@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from slice_vid import slice_video
+from imgs_to_vid import slice_video
 import cv2
 
 '''
@@ -14,12 +14,12 @@ num_frames = 16
 kernel_size = (3, 3, 3)
 
 # Ajout de num_frames à kernel_size
-kernel_size_with_frames = (num_frames,) + kernel_size[1:]'''
+kernel_size_with_frames = (num_frames,) + kernel_size[1:]
 
 # Charger une image à l'aide de slice_vid
 frames=slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-frames=frames[:7]
+frames=frames[:7]'''
 
 def img2tens(frames):
     if len(frames)<3:
@@ -89,18 +89,53 @@ class Mod(nn.Module):
         x4 = 0.5*(x3[:,:,0,:,:]+x3[:,:,1,:,:]) 
         return x4
 
-def train(mod,data,target,nepochs):
-    optim = torch.optim.Adam(mod.parameters(), lr=0.001)
+def test(model, data, target):
     crit = nn.MSELoss()
     inputs, goldys = data , target
     goldys = goldys.permute(0,3,1,2)
+    haty = model(inputs)
+    val_loss = crit(haty,goldys)
+    return val_loss.item()
+    
+def train(model,data,target,nepochs):
+    optim = torch.optim.Adam(model.parameters(), lr=0.001)
+    crit = nn.MSELoss()
+    inputs, goldys = data , target
+    goldys = goldys.permute(0,3,1,2)
+    ITER=[]
+    LOSS=[]
+    VAL_LOSS=[]
+    i=0
     for epoch in range(nepochs):
         optim.zero_grad()
-        haty = mod(inputs)
+        haty = model(inputs)
         loss = crit(haty,goldys)
         print(f"err de : {loss} à la {epoch+1}e epoch")
+        i+=1
+        ITER.append(i)
+        LOSS.append(loss.item())
+        VAL_LOSS.append(test(model,data,target))
         loss.backward()
         optim.step()
+        
+    #Affichage de la courbe de loss train et val 
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+
+    color = 'tab:blue'
+    ax1.set_xlabel('Iterations')
+    ax1.set_ylabel('Perte (LOSS)', color=color)
+    ax1.plot(ITER, LOSS, label='Perte (LOSS)', color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    
+    ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax2.set_ylabel('Loss de validation', color=color)
+    ax2.plot(ITER, VAL_LOSS, label='Loss de validation (VAL_LOSS)', color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    plt.title('Courbes de loss au cour des epochs')
+    fig.tight_layout()
+    plt.show()
 
 ''''
 mod=Mod(3,3)
