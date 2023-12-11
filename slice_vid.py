@@ -2,7 +2,6 @@ import cv2
 
 def slice_video(video_path): 
     # Charger la vidéo
-    video_path = video_path
     cap = cv2.VideoCapture(video_path)
 
     # Vérifier si la vidéo est ouverte

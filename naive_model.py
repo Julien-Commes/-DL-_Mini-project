@@ -5,6 +5,17 @@ import matplotlib.pyplot as plt
 from slice_vid import slice_video
 import cv2
 
+'''
+in_channels = 3
+out_channels = 64
+num_frames = 16
+
+# kernel_size inclut maintenant explicitement la dimension temporelle
+kernel_size = (3, 3, 3)
+
+# Ajout de num_frames à kernel_size
+kernel_size_with_frames = (num_frames,) + kernel_size[1:]'''
+
 # Charger une image à l'aide de slice_vid
 frames=slice_video('video_test.mp4')
 
@@ -50,7 +61,7 @@ class Mod(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv3d(64, 64, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
+            nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
         )
 
         # Bottleneck
@@ -74,6 +85,7 @@ class Mod(nn.Module):
     def forward(self, x):
         x = x.permute(0, 4, 1, 2, 3)
         x1 = self.encoder(x)
+        print(x1.shape)
         x2 = self.bottleneck(x1)
         x3 = self.decoder(torch.cat([x1, x2], dim=1))
         x4 = 0.5*(x3[:,:,0,:,:]+x3[:,:,1,:,:]) 
