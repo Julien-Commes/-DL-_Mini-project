@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
 import cv2
 
@@ -19,36 +20,55 @@ kernel_size_with_frames = (num_frames,) + kernel_size[1:]
 # Charger une image à l'aide de slice_vid
 frames=slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-frames=frames[:7]'''
+frames=frames[:7]
+'''
 
-def img2tens(frames):
-    if len(frames)<3:
-        print("La vidéo ne contient pas assez de frames")
-        exit()
+def img2tens(frames, mode='train', test_size=0.3):
+    if mode=='train':
+        if len(frames)<3:
+            print("La vidéo ne contient pas assez de frames")
+            exit()
 
-    if len(frames)%2==0:
-        frames.pop()
+        if len(frames)%2==0:
+            frames.pop()
 
-    y=[]
-    X=[]
-    i=0
-    for frame in frames :
-        i+=1
-        if i%2!=0:
-            X.append(frame)
-        else :
-            y.append(frame)
+        y=[]
+        X=[]
+        i=0
+        for frame in frames :
+            i+=1
+            if i%2!=0:
+                X.append(frame)
+            else :
+                y.append(frame)
 
-    X_frames=[]
-    for k in range(len(X)-1):
-        pair=[X[k],X[k+1]]
-        X_frames.append(pair)
+        X_frames=[]
+        for k in range(len(X)-1):
+            pair=[X[k],X[k+1]]
+            X_frames.append(pair)
 
-    X_frames=np.array(X_frames)
-    y_frames=np.array(y)
-    X_frames_tensor=torch.tensor(X_frames).float()
-    y_frames_tensor=torch.tensor(y_frames).float()
-    return X_frames_tensor,y_frames_tensor
+        X_frames=np.array(X_frames)
+        y_frames=np.array(y)
+        X_train_frames, X_test_frames, y_train_frames, y_test_frames = train_test_split(X_frames, y_frames, test_size=test_size)
+        X_train_tensor=torch.tensor(X_train_frames).float()
+        y_train_tensor=torch.tensor(y_train_frames).float()
+        X_test_tensor=torch.tensor(X_test_frames).float()
+        y_test_tensor=torch.tensor(y_test_frames).float()
+        return X_train_tensor,y_train_tensor, X_test_tensor, y_test_tensor
+    
+    if mode=='forward':
+        X_frames=[]
+        for k in range(len(frames)-1):
+            pair=[frames[k],frames[k+1]]
+            X_frames.append(pair)
+
+        X_frames=np.array(X_frames)
+        X_tensor=torch.tensor(X_frames).float()
+        return X_tensor
+    
+    print("Veuillez entrer un mode correcte pour l'utilisation du modèle (train ou forward)")
+    return 0
+        
 
 class Mod(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -71,7 +91,7 @@ class Mod(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        #Décodeu
+        #Décodeur
         self.decoder = nn.Sequential(
             nn.ConvTranspose3d(128, 64, kernel_size=(1, 2, 2), stride=(1, 2, 2), padding=(0, 0, 0)),
             nn.ReLU(inplace=True),
@@ -89,15 +109,15 @@ class Mod(nn.Module):
         x4 = 0.5*(x3[:,:,0,:,:]+x3[:,:,1,:,:]) 
         return x4
 
-def test(model, data, target):
+def test(model, testx, testy):
     crit = nn.MSELoss()
-    inputs, goldys = data , target
+    inputs, goldys = testx , testy
     goldys = goldys.permute(0,3,1,2)
     haty = model(inputs)
     val_loss = crit(haty,goldys)
     return val_loss.item()
     
-def train(model,data,target,nepochs):
+def train(model, data, target, testx, testy, nepochs):
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
     crit = nn.MSELoss()
     inputs, goldys = data , target
@@ -114,7 +134,7 @@ def train(model,data,target,nepochs):
         i+=1
         ITER.append(i)
         LOSS.append(loss.item())
-        VAL_LOSS.append(test(model,data,target))
+        VAL_LOSS.append(test(model,testx,testy))
         loss.backward()
         optim.step()
         
@@ -135,16 +155,18 @@ def train(model,data,target,nepochs):
 
     plt.title('Courbes de loss au cour des epochs')
     fig.tight_layout()
+    plt.savefig('loss_curves.jpg')
     plt.show()
 
 ''''
 mod=Mod(3,3)
 nepochs=50
-X_frames_tensor, y_frames_tensor = img2tens(frames)
+X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
 
-train(mod,X_frames_tensor, y_frames_tensor, nepochs)
+train(mod,X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, nepochs)
 
-output = mod(X_frames_tensor)'''
+output = mod(X_train_tensor)
+'''
 
 def tens2img(output_tens) :
     output_tens = output_tens.permute(0,2,3,1)
@@ -160,4 +182,5 @@ scaled_output = tens2img(output)
 # Afficher chaque image des tenseurs de sortie
 plt.imshow(scaled_output[0, :, :, :], cmap='gray')
 plt.title('Image 1')
-plt.show()'''
+plt.show()
+'''
