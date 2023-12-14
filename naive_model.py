@@ -7,20 +7,10 @@ from imgs_to_vid import slice_video
 import cv2
 
 '''
-in_channels = 3
-out_channels = 64
-num_frames = 16
-
-# kernel_size inclut maintenant explicitement la dimension temporelle
-kernel_size = (3, 3, 3)
-
-# Ajout de num_frames à kernel_size
-kernel_size_with_frames = (num_frames,) + kernel_size[1:]
-
 # Charger une image à l'aide de slice_vid
-frames=slice_video('video_test.mp4')
+frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-frames=frames[:7]
+frames=frames[:11]
 '''
 
 def img2tens(frames, mode='train', test_size=0.3):
@@ -104,9 +94,11 @@ class Mod(nn.Module):
     def forward(self, x):
         x = x.permute(0, 4, 1, 2, 3)
         x1 = self.encoder(x)
+        x1 = 0.5*(x1[:,:,0,:,:]+x1[:,:,1,:,:])
+        x1 = x1.unsqueeze(2)
         x2 = self.bottleneck(x1)
-        x3 = self.decoder(torch.cat([x1, x2], dim=1))
-        x4 = 0.5*(x3[:,:,0,:,:]+x3[:,:,1,:,:]) 
+        x3 = self.decoder(torch.cat([x1, x2], dim=1)) #Il faut faire l'interpolation dans l'espace latent avant de l'envoyer dans le décodeur
+        x4 = x3.squeeze(2)
         return x4
 
 def test(model, testx, testy):
@@ -158,9 +150,10 @@ def train(model, data, target, testx, testy, nepochs):
     plt.savefig('loss_curves.jpg')
     plt.show()
 
-''''
+'''
 mod=Mod(3,3)
-nepochs=50
+        
+nepochs=5
 X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
 
 train(mod,X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, nepochs)

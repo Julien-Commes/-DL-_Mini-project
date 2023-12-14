@@ -17,14 +17,14 @@ def main(opt):
     """Main function."""
     source = 'video_test.mp4'
     frames, frame_width, frame_height, fps, fourcc = slice_video(source)
-    frames = frames[:9]
+    frames = frames[:17]
     X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames, mode='train', test_size=0.3)
     
     mod = Mod(3,3)
     nepochs = 10
     train(mod,X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, nepochs)
     
-    frames = frames[:5]
+    frames = frames[:7]
     Frames_tensor = img2tens(frames, mode = 'forward')
     output = mod(Frames_tensor)
     scaled_output = tens2img(output)
