@@ -15,7 +15,7 @@ def parse_opt():
 
 def main(opt):
     """Main function."""
-    source = 'video_test.mp4'
+    source = ' ../video_test.mp4'
     frames, frame_width, frame_height, fps, fourcc = slice_video(source)
     frames = frames[:17]
     X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames, mode='train', test_size=0.3)

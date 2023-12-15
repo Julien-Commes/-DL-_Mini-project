@@ -1,9 +1,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
+from torchsummary import summary
 import cv2
 
 '''
@@ -152,7 +154,8 @@ def train(model, data, target, testx, testy, nepochs):
 
 '''
 mod=Mod(3,3)
-        
+summary(mod,(3, frame_height, frame_width, 3))    
+  
 nepochs=5
 X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
 
@@ -173,7 +176,26 @@ def tens2img(output_tens) :
 scaled_output = tens2img(output)
 
 # Afficher chaque image des tenseurs de sortie
+
+plt.figure(figsize(64,4))
+plt.subplot(2,2,1)
 plt.imshow(scaled_output[0, :, :, :], cmap='gray')
 plt.title('Image 1')
+
+plt.subplot(2,2,2)
+plt.imshow(scaled_output[1, :, :, :], cmap='gray')
+plt.title('Image 2')
+
+plt.subplot(2,2,3)
+plt.imshow(scaled_output[2, :, :, :], cmap='gray')
+plt.title('Image 3')
+
+plt.subplot(2,2,4)
+plt.imshow(scaled_output[3, :, :, :], cmap='gray')
+plt.title('Image 4')
+
+plt.tight_layout()
+plt.imsave('exemples_results_apprentissage.jpg')
+
 plt.show()
 '''
