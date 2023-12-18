@@ -106,34 +106,45 @@ class Mod(nn.Module):
         x4 = x3.squeeze(2)
         return x4
 
-def test(model, testx, testy):
+def test(model, testloader):
+    model.train(False)
+    val_loss, nbatch = 0., 0
     crit = nn.MSELoss()
-    inputs, goldys = testx , testy
-    goldys = goldys.permute(0,3,1,2)
-    haty = model(inputs)
-    val_loss = crit(haty,goldys)
-    return val_loss.item()
+    for data in testloader :
+        inputs, goldys = data
+        goldys = goldys.permute(0,3,1,2)
+        haty = model(inputs)
+        loss = crit(haty,goldys)
+        val_loss +=  loss.item()
+        nbatch += 1
+    val_loss /= float(nbatch)
+    model.train(True)
+    return val_loss
     
-def train(model, data, target, testx, testy, nepochs):
+def train(model, trainloader, testloader, nepochs):
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
     crit = nn.MSELoss()
-    inputs, goldys = data , target
-    goldys = goldys.permute(0,3,1,2)
     ITER=[]
     LOSS=[]
     VAL_LOSS=[]
-    i=0
     for epoch in range(nepochs):
-        optim.zero_grad()
-        haty = model(inputs)
-        loss = crit(haty,goldys)
-        print(f"err de : {loss} à la {epoch+1}e epoch")
-        i+=1
-        ITER.append(i)
-        LOSS.append(loss.item())
-        VAL_LOSS.append(test(model,testx,testy))
-        loss.backward()
-        optim.step()
+        val_loss = test(model, testloader)
+        totloss, nbatch = 0., 0
+        for data in trainloader :
+            inputs, goldys = data
+            goldys = goldys.permute(0,3,1,2)
+            optim.zero_grad()
+            haty = model(inputs)
+            loss = crit(haty,goldys)
+            totloss += loss.item()
+            nbatch += 1
+            loss.backward()
+            optim.step()
+        totloss /= float(nbatch)
+        ITER.append(epoch)
+        VAL_LOSS.append(val_loss)
+        LOSS.append(totloss)
+        print(f"err de : {totloss} à la {epoch+1}e epoch")
         
     #Affichage de la courbe de loss train et val 
     fig, ax1 = plt.subplots(figsize=(10, 5))
@@ -160,9 +171,13 @@ mod=Mod(3,3)
 mod=mod.to(device)
 summary(mod,(3, frame_height, frame_width, 3))    
 nepochs=5
-X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
+trainds = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
+trainloader = torch.utils.data.DataLoader(trainds, batch_size=7, shuffle=False)
+testds = torch.utils.data.TensorDataset(X_test_tensor, y_test_tensor)
+testloader = torch.utils.data.DataLoader(testds, batch_size=7, shuffle=False)
 
-train(mod,X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, nepochs)
+train(mod, trainloader, testloader, nepochs)
+
 
 X_tensor = img2tens(frames, mode='forward')
 

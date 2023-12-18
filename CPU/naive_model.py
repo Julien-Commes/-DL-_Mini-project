@@ -1,18 +1,15 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
 from torchsummary import summary
-import cv2
-
 '''
 # Charger une image à l'aide de slice_vid
 frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-frames=frames[:11]
+#frames=frames[:11]
 '''
 
 def img2tens(frames, mode='train', test_size=0.3):
@@ -60,7 +57,6 @@ def img2tens(frames, mode='train', test_size=0.3):
     
     print("Veuillez entrer un mode correcte pour l'utilisation du modèle (train ou forward)")
     return 0
-        
 
 class Mod(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -68,28 +64,28 @@ class Mod(nn.Module):
 
         # Encodeur
         self.encoder = nn.Sequential(
-            nn.Conv3d(in_channels, 64, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.Conv3d(in_channels, 16, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(64, 64, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.Conv3d(16, 16, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
         )
 
         # Bottleneck
         self.bottleneck = nn.Sequential(
-            nn.Conv3d(64, 128, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.Conv3d(16, 32, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(128, 64, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.Conv3d(32, 16, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
         )
 
         #Décodeur
         self.decoder = nn.Sequential(
-            nn.ConvTranspose3d(128, 64, kernel_size=(1, 2, 2), stride=(1, 2, 2), padding=(0, 0, 0)),
+            nn.ConvTranspose3d(32, 16, kernel_size=(1, 2, 2), stride=(1, 2, 2), padding=(0, 0, 0)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(64, 64, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.Conv3d(16, 16, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(64, out_channels, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.Conv3d(16, out_channels, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
             nn.ReLU(inplace=True),
         )
 
@@ -103,34 +99,45 @@ class Mod(nn.Module):
         x4 = x3.squeeze(2)
         return x4
 
-def test(model, testx, testy):
+def test(model, testloader):
+    model.train(False)
+    val_loss, nbatch = 0., 0
     crit = nn.MSELoss()
-    inputs, goldys = testx , testy
-    goldys = goldys.permute(0,3,1,2)
-    haty = model(inputs)
-    val_loss = crit(haty,goldys)
-    return val_loss.item()
+    for data in testloader :
+        inputs, goldys = data
+        goldys = goldys.permute(0,3,1,2)
+        haty = model(inputs)
+        loss = crit(haty,goldys)
+        val_loss +=  loss.item()
+        nbatch += 1
+    val_loss /= float(nbatch)
+    model.train(True)
+    return val_loss
     
-def train(model, data, target, testx, testy, nepochs):
+def train(model, trainloader, testloader, nepochs):
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
     crit = nn.MSELoss()
-    inputs, goldys = data , target
-    goldys = goldys.permute(0,3,1,2)
     ITER=[]
     LOSS=[]
     VAL_LOSS=[]
-    i=0
     for epoch in range(nepochs):
-        optim.zero_grad()
-        haty = model(inputs)
-        loss = crit(haty,goldys)
-        print(f"err de : {loss} à la {epoch+1}e epoch")
-        i+=1
-        ITER.append(i)
-        LOSS.append(loss.item())
-        VAL_LOSS.append(test(model,testx,testy))
-        loss.backward()
-        optim.step()
+        val_loss = test(model, testloader)
+        totloss, nbatch = 0., 0
+        for data in trainloader :
+            inputs, goldys = data
+            goldys = goldys.permute(0,3,1,2)
+            optim.zero_grad()
+            haty = model(inputs)
+            loss = crit(haty,goldys)
+            totloss += loss.item()
+            nbatch += 1
+            loss.backward()
+            optim.step()
+        totloss /= float(nbatch)
+        ITER.append(epoch)
+        VAL_LOSS.append(val_loss)
+        LOSS.append(totloss)
+        print(f"err de : {totloss} à la {epoch+1}e epoch")
         
     #Affichage de la courbe de loss train et val 
     fig, ax1 = plt.subplots(figsize=(10, 5))
@@ -154,16 +161,23 @@ def train(model, data, target, testx, testy, nepochs):
 
 '''
 mod=Mod(3,3)
-summary(mod,(3, frame_height, frame_width, 3))    
+#summary(mod,(3, frame_height, frame_width, 3))    
   
-nepochs=5
+nepochs=50
 X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
+trainds = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
+trainloader = torch.utils.data.DataLoader(trainds, batch_size=7, shuffle=False)
+testds = torch.utils.data.TensorDataset(X_test_tensor, y_test_tensor)
+testloader = torch.utils.data.DataLoader(testds, batch_size=7, shuffle=False)
 
-train(mod,X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, nepochs)
+train(mod, trainloader, testloader, nepochs)
 
-output = mod(X_train_tensor)
+
+X_tensor = img2tens(frames, mode='forward')
+
+output = mod(X_tensor)
+
 '''
-
 def tens2img(output_tens) :
     output_tens = output_tens.permute(0,2,3,1)
     output_np = output_tens.cpu().detach().numpy()
@@ -175,9 +189,8 @@ def tens2img(output_tens) :
 '''
 scaled_output = tens2img(output)
 
-# Afficher chaque image des tenseurs de sortie
-
-plt.figure(figsize(64,4))
+# Afficher des images de sortie
+plt.figure(figsize=(64,4))
 plt.subplot(2,2,1)
 plt.imshow(scaled_output[0, :, :, :], cmap='gray')
 plt.title('Image 1')
@@ -195,7 +208,5 @@ plt.imshow(scaled_output[3, :, :, :], cmap='gray')
 plt.title('Image 4')
 
 plt.tight_layout()
-plt.imsave('exemples_results_apprentissage.jpg')
-
 plt.show()
 '''
