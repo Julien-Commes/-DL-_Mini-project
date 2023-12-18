@@ -1,16 +1,16 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
 from torchsummary import summary
-'''
+
 # Charger une image à l'aide de slice_vid
 frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-#frames=frames[:11]
-'''
+frames=frames[:15]
 
 def img2tens(frames, mode='train', test_size=0.3):
     if mode=='train':
@@ -101,6 +101,10 @@ class Mod(nn.Module):
 
 def test(model, testloader):
     model.train(False)
+    ssim = StructuralSimilarityIndexMeasure()
+    psnr = PeakSignalNoiseRatio()
+    val_ssim = 0.
+    val_psnr = 0.
     val_loss, nbatch = 0., 0
     crit = nn.MSELoss()
     for data in testloader :
@@ -108,11 +112,15 @@ def test(model, testloader):
         goldys = goldys.permute(0,3,1,2)
         haty = model(inputs)
         loss = crit(haty,goldys)
-        val_loss +=  loss.item()
+        val_ssim += ssim(haty, goldys).item()
+        val_psnr += psnr(haty,goldys).item()
+        val_loss += loss.item()
         nbatch += 1
+    val_ssim /= float(nbatch)
+    val_psnr /= float(nbatch)
     val_loss /= float(nbatch)
     model.train(True)
-    return val_loss
+    return val_loss, val_ssim, val_psnr
     
 def train(model, trainloader, testloader, nepochs):
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -120,8 +128,10 @@ def train(model, trainloader, testloader, nepochs):
     ITER=[]
     LOSS=[]
     VAL_LOSS=[]
+    VAL_SSIM=[]
+    VAL_PSNR=[]
     for epoch in range(nepochs):
-        val_loss = test(model, testloader)
+        val_loss, val_ssim, val_psnr = test(model, testloader)
         totloss, nbatch = 0., 0
         for data in trainloader :
             inputs, goldys = data
@@ -136,6 +146,8 @@ def train(model, trainloader, testloader, nepochs):
         totloss /= float(nbatch)
         ITER.append(epoch)
         VAL_LOSS.append(val_loss)
+        VAL_SSIM.append(val_ssim)
+        VAL_PSNR.append(val_psnr)
         LOSS.append(totloss)
         print(f"err de : {totloss} à la {epoch+1}e epoch")
         
@@ -153,17 +165,29 @@ def train(model, trainloader, testloader, nepochs):
     ax2.set_ylabel('Loss de validation', color=color)
     ax2.plot(ITER, VAL_LOSS, label='Loss de validation (VAL_LOSS)', color=color)
     ax2.tick_params(axis='y', labelcolor=color)
+    
+    ax3 = ax1.twinx()
+    color = 'tab:green'
+    ax3.set_ylabel('SSIM de validation', color=color)
+    ax3.plot(ITER, VAL_SSIM, label='SSIM de validation (VAL_SSIM)', color=color)
+    ax3.tick_params(axis='y', labelcolor=color)
+    
+    ax4 = ax1.twinx()
+    color = 'tab:orange'
+    ax4.set_ylabel('PSNR de validation', color=color)
+    ax4.plot(ITER, VAL_PSNR, label='PSNR de validation (VAL_PSNR)', color=color)
+    ax4.tick_params(axis='y', labelcolor=color)
 
     plt.title('Courbes de loss au cour des epochs')
     fig.tight_layout()
     plt.savefig('loss_curves.jpg')
     plt.show()
 
-'''
+
 mod=Mod(3,3)
 #summary(mod,(3, frame_height, frame_width, 3))    
   
-nepochs=50
+nepochs=5
 X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
 trainds = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
 trainloader = torch.utils.data.DataLoader(trainds, batch_size=7, shuffle=False)
@@ -172,12 +196,12 @@ testloader = torch.utils.data.DataLoader(testds, batch_size=7, shuffle=False)
 
 train(mod, trainloader, testloader, nepochs)
 
-
+'''
 X_tensor = img2tens(frames, mode='forward')
 
 output = mod(X_tensor)
 
-'''
+
 def tens2img(output_tens) :
     output_tens = output_tens.permute(0,2,3,1)
     output_np = output_tens.cpu().detach().numpy()
@@ -186,7 +210,7 @@ def tens2img(output_tens) :
     scaled_output = ((output_np - output_np.min()) / (output_np.max() - output_np.min()) * 255).astype(np.uint8)
     return(scaled_output)
 
-'''
+
 scaled_output = tens2img(output)
 
 # Afficher des images de sortie
