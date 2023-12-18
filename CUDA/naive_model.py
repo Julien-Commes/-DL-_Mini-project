@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
