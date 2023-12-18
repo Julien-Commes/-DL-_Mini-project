@@ -5,14 +5,14 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoise
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
-from torchsummary import summary
+#from torchsummary import summary
 
-'''
+
 # Charger une image à l'aide de slice_vid
 frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
-frames=frames[:70]
-'''
+#frames=frames[:70]
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -108,8 +108,8 @@ class Mod(nn.Module):
 
 def test(model, testloader):
     model.train(False)
-    ssim = StructuralSimilarityIndexMeasure()
-    psnr = PeakSignalNoiseRatio()
+    ssim = StructuralSimilarityIndexMeasure().to(device)
+    psnr = PeakSignalNoiseRatio().to(device)
     val_ssim = 0.
     val_psnr = 0.
     val_loss, nbatch = 0., 0
@@ -131,7 +131,7 @@ def test(model, testloader):
     
 def train(model, trainloader, testloader, nepochs):
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
-    crit = nn.MSELoss()
+    crit = PeakSignalNoiseRatio().to(device)
     ITER=[]
     LOSS=[]
     VAL_LOSS=[]
@@ -190,11 +190,14 @@ def train(model, trainloader, testloader, nepochs):
     plt.savefig('loss_curves.jpg')
     plt.show()
 
-'''
+
 mod=Mod(3,3)
 mod=mod.to(device)
-summary(mod,(3, frame_height, frame_width, 3))    
-nepochs=5
+#summary(mod,(3, frame_height, frame_width, 3))    
+nepochs=50
+
+X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames)
+
 trainds = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
 trainloader = torch.utils.data.DataLoader(trainds, batch_size=7, shuffle=False)
 testds = torch.utils.data.TensorDataset(X_test_tensor, y_test_tensor)
@@ -202,11 +205,11 @@ testloader = torch.utils.data.DataLoader(testds, batch_size=7, shuffle=False)
 
 train(mod, trainloader, testloader, nepochs)
 
-
+'''
 X_tensor = img2tens(frames, mode='forward')
 
 output = mod(X_tensor)
-'''
+
 
 def tens2img(output_tens) :
     output_tens = output_tens.permute(0,2,3,1)
@@ -216,7 +219,7 @@ def tens2img(output_tens) :
     scaled_output = ((output_np - output_np.min()) / (output_np.max() - output_np.min()) * 255).astype(np.uint8)
     return(scaled_output)
 
-'''
+
 scaled_output = tens2img(output)
 
 # Afficher des images de sortie
