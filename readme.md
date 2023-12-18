@@ -34,11 +34,11 @@ Une implémentation simple de l'architecture U-Net pour pytorch est disponible s
 Néanmoins, les premiers essais d'utilisation du réseau pour un apprentissage sur une vidéo courte (moins de 6 secondes) se sont tous soldés par un Kill du process par la machine. Le modèle contenait plus de ... paramètres et devait tourner sur une machine sans GPU. Il a fallu donc imaginer une version encore simplifiée de l'architecture. Les couches profondes ont donc été successivement retirées afin de réduire le nombre de paramètres jusqu'à arriver à un seul bloc de convolutions dans l'encodeur et dans le décodeur au lieu de 4. 
 De plus, l'architecture U-Net n'est pas utilisée à l'origine pour des tâches d'interpolation vidéo mais pour de la segmentation d'image. Il a donc fallu adapter les couches de convolutions pour une donnée vidéo et penser à quand fusionner les images adjacentes dans notre architecture. Dans le modèle retenu, celle-ci à lieu après le passage des images adjacentes dans le bloc encodeur. 
 
-Exemple de performances avec fusion après le passage dans le décodeur :
-![outfuse](/images/....png "outfuse")
+Exemple d'images avec fusion après le passage dans le décodeur (50 epochs):
+![outfuse](/images/figures/Figure_1_50ep_MSE_Adam_1.4_BS7_outfuse.png "outfuse")
 
-Exemple de performances avec fusion après le passage dans l'encodeur :
-![infuse](/images/....png "infuse")
+Exemple d'images avec fusion après le passage dans l'encodeur (50 epochs):
+![infuse](/images/figures/Figure_1_50ep_MSE_Adam_1.1_BS7.png "infuse")
 
 (Les résultats étaint prévisibles car on imagine bien que la fusion va apporter du flou qui ne sera pas corrigé en sortie du décodeur)
 
@@ -54,23 +54,29 @@ On cherche à apprendre générer des images intermédiaires entre 2 images adja
 
 Deux optimiseurs ont étés testés : Adam et la SGD. L'utilisation de la SGD a tendance à obscurcir l'image voir obtenir une image noire et reste bloqué à ce minimum local. Adam a donc été privilégié. 
 
-Quelques générations d'images en utilisant la SGD : ![SGD-optim](/images/....png "SGD optim")
+Quelques générations d'images en utilisant la SGD (50 epochs): ![SGD-optim](/images/figures/Figure_1_50ep_PSNR_SGD_1.1_BS7.png "SGD optim")
 
-La problèmatique de la métrique d'évaluation du modèle est aussi importante. En effet, celle-ci doit normalement être utilisée pour estimer la capacité du modèle à généraliser sur des données sur lesquels il n'apprend pas. Ici le problème est que bien qu'il n'apprends sur les données d'évaluation, sur une vidéo courte (moins de 10 secondes) et surtout avec une fréquence de 30 images par seconde, les images du corpus d'évaluation et du corpus d'entraînement sont très similaires. Ont se retrouve alors avec des courbes de loss de validation et d'entraînement comme celle-ci (pour une MSE) : ![No-PSNR](/images/....png "No PSNR")
+La problèmatique de la métrique d'évaluation du modèle est aussi importante. En effet, celle-ci doit normalement être utilisée pour estimer la capacité du modèle à généraliser sur des données sur lesquels il n'apprend pas. Ici le problème est que bien qu'il n'apprends sur les données d'évaluation, sur une vidéo courte (moins de 10 secondes) et surtout avec une fréquence de 30 images par seconde, les images du corpus d'évaluation et du corpus d'entraînement sont très similaires. Ont se retrouve alors avec des courbes de loss de validation et d'entraînement comme celle-ci (pour une MSE) : ![No-PSNR](/images/training_curves/loss_curves_250ep_Adam_MSE_1.4.png "No PSNR")
 
 Une piste qui a été explorée a été d'utiliser des vidéos de stop motion, celles-ci offrant une plus grande varation entre chaques images que de la vidéo filmée. L'effet sur la différentiation entre les courbes reste très modeste. Néanmoins cela permet d'introduire le choix des métriques utilisées.
 La première intuition a été d'utiliser une Mean Square Error afin de comparer pixel par pixel (pour éviter les translations trop abrupts d'un objet par exemple). Cela donne des résultats d'apprentissages très convenables néanmoins la SSIM (Structural Similarity Index Measure) qui donne la similarité entre deux images dans leur construction et le PSNR (Peak Signal Noise Ratio) qui mesure la qualité de reconstruction d'une image ont également étaient testés pour l'apprentissage et gardés dans l'évaluation du modèle. 
 
 Un exemple d'apprentissage :
-Avec l'utilisation du PSNR comme loss ![PSNR descent](/images/....png "PSNR descent")
+Avec l'utilisation du PSNR comme loss ![PSNR descent](/images/training_curves/loss_curves_50ep_Adam_PSNR_1.1_BS7.png "PSNR descent")
 
-Avec l'utilisation de la SSIM comme loss ![SSIM descent](/images/....png "SSIM descent")
+Avec l'utilisation de la SSIM comme loss ![SSIM descent](/images/training_curves/loss_curves_50ep_Adam_SSIM_1.1_BS7.png "SSIM descent")
 
 ### Evaluation
 
 Le modèle final produit un résultat plutôt satisfaisant au visionnage des vidéos auxquels on a augmenté le nombre d'images. Néanmoins, les vidéos contenant ayant à l'origine une fréquence basse (e.g., stop motion) contiennent encore des images où la fusion d'une image sur l'autre se fait encore ressentir (par exemple par l'apparation d'un objet en transparence). On notera tout de même que le modèle a besoin d'un certains nombre d'epochs d'apprentissage pour bien 'rendre' les couleurs et il a fallu appliquer un léger traitement post-modèle sur des problématique de luminosité car le modèle a encore tendance a sortir des images très légèrement trop sombre. 
 
 Bien que son utilisation ai un champ limité, il est quand même intéressant de voir que le modèle arrive à ces performances avec une problématique de réduction importante de sa taille afin d'être utilisable sur une machine ayant des performances plutôt faible. Néanmoins, il serait intéressant d'essayer la mise en place d'un modèle capable de généraliser sur plusieurs vidéos afin d'éviter le temps d'apprentissage à chaque éxécutions. Une piste en ce sens serait d'utiliser une architecture à base de RNN ou de transformeurs qui sont plus efficaces lorsqu'il faut traiter des données qui ont une dimension temporelle. 
+
+
+
+
+
+
 
 ### Historique du projet (A compléter)
 #### 04/12/2023 - Git creation

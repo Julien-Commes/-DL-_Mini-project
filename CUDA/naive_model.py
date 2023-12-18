@@ -7,12 +7,12 @@ from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
 #from torchsummary import summary
 
-
+'''
 # Charger une image à l'aide de slice_vid
 frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
 #frames=frames[:70]
-
+'''
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -131,7 +131,7 @@ def test(model, testloader):
     
 def train(model, trainloader, testloader, nepochs):
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
-    crit = PeakSignalNoiseRatio().to(device)
+    crit = nn.MSELoss()
     ITER=[]
     LOSS=[]
     VAL_LOSS=[]
@@ -190,7 +190,7 @@ def train(model, trainloader, testloader, nepochs):
     plt.savefig('loss_curves.jpg')
     plt.show()
 
-
+'''
 mod=Mod(3,3)
 mod=mod.to(device)
 #summary(mod,(3, frame_height, frame_width, 3))    
@@ -205,11 +205,14 @@ testloader = torch.utils.data.DataLoader(testds, batch_size=7, shuffle=False)
 
 train(mod, trainloader, testloader, nepochs)
 
+Frames_tensor = img2tens(frames, mode='forward')
+forwardds = torch.utils.data.TensorDataset(Frames_tensor)
+forwardloader = torch.utils.data.DataLoader(forwardds, batch_size=20, shuffle=False)
+
+for data in forwardloader:
+    inputs = data[0]
+    output = mod(inputs)
 '''
-X_tensor = img2tens(frames, mode='forward')
-
-output = mod(X_tensor)
-
 
 def tens2img(output_tens) :
     output_tens = output_tens.permute(0,2,3,1)
@@ -219,7 +222,7 @@ def tens2img(output_tens) :
     scaled_output = ((output_np - output_np.min()) / (output_np.max() - output_np.min()) * 255).astype(np.uint8)
     return(scaled_output)
 
-
+'''
 scaled_output = tens2img(output)
 
 # Afficher des images de sortie

@@ -1,9 +1,6 @@
 from imgs_to_vid import slice_video, write_video
 from naive_model import Mod, train, img2tens, tens2img
-import numpy as np
 import torch
-import torch.nn as nn
-import matplotlib.pyplot as plt
 import argparse
 
 def parse_opt():
@@ -30,7 +27,7 @@ def main(opt):
     mod = Mod(3,3)
     mod = mod.to(device)
     
-    nepochs = 250
+    nepochs = 50
     train(mod,trainloader, testloader, nepochs)
     
     Frames_tensor = img2tens(frames, mode = 'forward')
@@ -42,6 +39,8 @@ def main(opt):
     for data in forwardloader :
         inputs = data[0]
         output = mod(inputs)
+        brightness_factor = 1.05
+        output = torch.clamp(output * brightness_factor, 0., 255.)
         scaled_output = tens2img(output)
         for k in range(len(inputs) + len(scaled_output)):
             if k%2 == 0:
