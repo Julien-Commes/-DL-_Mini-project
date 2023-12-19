@@ -1,21 +1,19 @@
 from imgs_to_vid import slice_video, write_video
 from naive_model import Mod, train, img2tens, tens2img
-import numpy as np
 import torch
-import torch.nn as nn
-import matplotlib.pyplot as plt
 import argparse
 
 def parse_opt():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('--source', type=str, required=True, help='video file path')
-    return parser.parse_args()
+    parser.add_argument('source', type=str, help='video file path')
+    opt = parser.parse_args()
+    return opt
 
 
 def main(opt):
     """Main function."""
-    source = 'video_test.mp4'
+    source = opt.source
     frames, frame_width, frame_height, fps, fourcc = slice_video(source)
     X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = img2tens(frames, mode='train', test_size=0.3)
     trainds = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)

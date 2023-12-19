@@ -1,6 +1,4 @@
 import cv2
-import argparse
-from pathlib import Path
 import os
 
 def slice_video(video_path): 
@@ -37,7 +35,7 @@ def slice_video(video_path):
     cap.release()
     return frames, frame_width, frame_height, fps, fourcc
 
-frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
+'''frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')'''
 
 def write_video(video_path, output, frame_width, frame_height, fps, fourcc):
     # Output setup
@@ -56,4 +54,4 @@ def write_video(video_path, output, frame_width, frame_height, fps, fourcc):
     
     video_writer.release()
 
-write_video('video_test.mp4', frames, frame_width, frame_height, fps, fourcc)
+'''write_video('video_test.mp4', frames, frame_width, frame_height, fps, fourcc)'''

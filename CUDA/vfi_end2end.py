@@ -6,13 +6,14 @@ import argparse
 def parse_opt():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('--source', type=str, required=True, help='video file path')
-    return parser.parse_args()
+    parser.add_argument('source', type=str, help='video file path')
+    opt = parser.parse_args()
+    return opt
 
 
 def main(opt):
     """Main function."""
-    source = 'video_test.mp4'
+    source = opt.source
     frames, frame_width, frame_height, fps, fourcc = slice_video(source)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

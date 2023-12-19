@@ -5,12 +5,14 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoise
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imgs_to_vid import slice_video
-from torchsummary import summary
+#from torchsummary import summary
 
+'''
 # Charger une image à l'aide de slice_vid
 frames, frame_width, frame_height, fps, fourcc = slice_video('video_test.mp4')
 # Isole uniquement 5 frames pour la partie débuggage du réseau
 frames=frames[:15]
+'''
 
 def img2tens(frames, mode='train', test_size=0.3):
     if mode=='train':
@@ -180,10 +182,10 @@ def train(model, trainloader, testloader, nepochs):
 
     plt.title('Courbes de loss au cour des epochs')
     fig.tight_layout()
-    plt.savefig('loss_curves.jpg')
+    plt.savefig('../images/training_curves/loss_curves.jpg')
     plt.show()
 
-
+'''
 mod=Mod(3,3)
 #summary(mod,(3, frame_height, frame_width, 3))    
   
@@ -196,12 +198,12 @@ testloader = torch.utils.data.DataLoader(testds, batch_size=7, shuffle=False)
 
 train(mod, trainloader, testloader, nepochs)
 
-'''
+
 X_tensor = img2tens(frames, mode='forward')
 
 output = mod(X_tensor)
 
-
+'''
 def tens2img(output_tens) :
     output_tens = output_tens.permute(0,2,3,1)
     output_np = output_tens.cpu().detach().numpy()
@@ -209,7 +211,7 @@ def tens2img(output_tens) :
     # Échelle des valeurs pour les images en uint8 (0-255)
     scaled_output = ((output_np - output_np.min()) / (output_np.max() - output_np.min()) * 255).astype(np.uint8)
     return(scaled_output)
-
+'''
 
 scaled_output = tens2img(output)
 

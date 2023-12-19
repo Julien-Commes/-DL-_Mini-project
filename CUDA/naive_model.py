@@ -102,7 +102,7 @@ class Mod(nn.Module):
         x1 = 0.5*(x1[:,:,0,:,:]+x1[:,:,1,:,:])
         x1 = x1.unsqueeze(2)
         x2 = self.bottleneck(x1)
-        x3 = self.decoder(torch.cat([x1, x2], dim=1)) #Il faut faire l'interpolation dans l'espace latent avant de l'envoyer dans le décodeur
+        x3 = self.decoder(torch.cat([x1, x2], dim=1))
         x4 = x3.squeeze(2)
         return x4
 
@@ -187,7 +187,7 @@ def train(model, trainloader, testloader, nepochs):
 
     plt.title('Courbes de loss au cour des epochs')
     fig.tight_layout()
-    plt.savefig('loss_curves.jpg')
+    plt.savefig('../images/training_curves/loss_curves.jpg')
     plt.show()
 
 '''

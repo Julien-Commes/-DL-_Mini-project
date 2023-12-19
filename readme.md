@@ -1,5 +1,30 @@
-# Deep Learning & Differentiable Programming Mini-project
+# Machine Learning & Differentiable Programming Mini-project
 ## VFI (Video Frame Interpolation)
+
+### Bibliothèques et utilisation
+
+#### Bibliothèques
+
+* numpy
+* pytorch
+* scikitlearn
+* openCV
+* os
+* argparse
+* torchmetrics
+* torchsummary (optionnel)
+
+#### Utilisation 
+
+Pour augmenter la fréquence d'une vidéo, exécuter le fichier vfi_end2end.py avec le chemin vers la vidéo (disponible dans /CPU ou /CUDA) :
+
+```bash
+python3 vfi_end2end.py ../DB/video_test.mp4
+```
+
+(Il peut être nécessaire de modifier la taille des batchs dans le fichier selon les capacités de la machine)
+
+Pour faire uniquement un entrainement et s'amuser avec les paramètres du modèle, exécuter le fichier naive_model.py après avoir "unquote" le code d'éxécution sur celui-ci.
 
 ### Contexte
 
@@ -31,7 +56,7 @@ L'architecture d'origine de U-Net est la suivante (image récupérée de la publ
 
 Une implémentation simple de l'architecture U-Net pour pytorch est disponible sur la page [UNET Implementation in PyTorch — Idiot Developer](https://medium.com/analytics-vidhya/unet-implementation-in-pytorch-idiot-developer-da40d955f201). Cette implémentation a inspirée celle utilisée pour ce projet. 
 
-Néanmoins, les premiers essais d'utilisation du réseau pour un apprentissage sur une vidéo courte (moins de 6 secondes) se sont tous soldés par un Kill du process par la machine. Le modèle contenait plus de ... paramètres et devait tourner sur une machine sans GPU. Il a fallu donc imaginer une version encore simplifiée de l'architecture. Les couches profondes ont donc été successivement retirées afin de réduire le nombre de paramètres jusqu'à arriver à un seul bloc de convolutions dans l'encodeur et dans le décodeur au lieu de 4. 
+Néanmoins, les premiers essais d'utilisation du réseau pour un apprentissage sur une vidéo courte (moins de 6 secondes) se sont tous soldés par un Kill du process par la machine. Le modèle contenait beaucoup trop de paramètres et devait tourner sur une machine sans GPU. Il a fallu donc imaginer une version encore simplifiée de l'architecture. Les couches profondes ont donc été successivement retirées afin de réduire le nombre de paramètres jusqu'à arriver à un seul bloc de convolutions dans l'encodeur et dans le décodeur au lieu de 4. 
 De plus, l'architecture U-Net n'est pas utilisée à l'origine pour des tâches d'interpolation vidéo mais pour de la segmentation d'image. Il a donc fallu adapter les couches de convolutions pour une donnée vidéo et penser à quand fusionner les images adjacentes dans notre architecture. Dans le modèle retenu, celle-ci à lieu après le passage des images adjacentes dans le bloc encodeur. 
 
 Exemple d'images avec fusion après le passage dans le décodeur (50 epochs):
@@ -40,7 +65,7 @@ Exemple d'images avec fusion après le passage dans le décodeur (50 epochs):
 Exemple d'images avec fusion après le passage dans l'encodeur (50 epochs):
 ![infuse](/images/figures/Figure_1_50ep_MSE_Adam_1.1_BS7.png "infuse")
 
-(Les résultats étaint prévisibles car on imagine bien que la fusion va apporter du flou qui ne sera pas corrigé en sortie du décodeur)
+(Les résultats étaint prévisibles car on imagine bien que la fusion va apporter du flou et des imperfections qui ne seront pas corrigé en sortie du décodeur)
 
 Une question restante porte sur la méthode d'apprentissage et le domaine d'application du modèle : Est ce que l'on veut que faire apprendre à notre modèle l'interpolation sur une vidéo puis lui demander d'en augmenter le nombre d'images ou est ce qu'il faut entrainer le modèle sur un grand corpus de vidéos afin qu'il puisse généraliser à toutes les vidéos. Pour des raisons de temps d'apprentissage et parce que le modèle semble trop peu volumineux, on a choisi ici de commencer par un modèle qui apprends sur une vidéo puis augmente son nombre d'images. 
 
@@ -56,15 +81,15 @@ Deux optimiseurs ont étés testés : Adam et la SGD. L'utilisation de la SGD a 
 
 Quelques générations d'images en utilisant la SGD (50 epochs): ![SGD-optim](/images/figures/Figure_1_50ep_PSNR_SGD_1.1_BS7.png "SGD optim")
 
-La problèmatique de la métrique d'évaluation du modèle est aussi importante. En effet, celle-ci doit normalement être utilisée pour estimer la capacité du modèle à généraliser sur des données sur lesquels il n'apprend pas. Ici le problème est que bien qu'il n'apprends sur les données d'évaluation, sur une vidéo courte (moins de 10 secondes) et surtout avec une fréquence de 30 images par seconde, les images du corpus d'évaluation et du corpus d'entraînement sont très similaires. Ont se retrouve alors avec des courbes de loss de validation et d'entraînement comme celle-ci (pour une MSE) : ![No-PSNR](/images/training_curves/loss_curves_250ep_Adam_MSE_1.4.png "No PSNR")
+La problèmatique de la métrique d'évaluation du modèle est aussi importante. En effet, celle-ci doit normalement être utilisée pour estimer la capacité du modèle à généraliser sur des données sur lesquels il n'apprend pas. Ici le problème est que bien qu'il n'apprends sur les données d'évaluation, sur une vidéo courte (moins de 10 secondes) et surtout avec une fréquence de 30 images par seconde, les images du corpus d'évaluation et du corpus d'entraînement sont très similaires. Ont se retrouve alors avec des courbes de loss de validation et d'entraînement comme celle-ci (pour une MSE) : ![No-PSNR](/images/training_curves/loss_curves_250ep_Adam_MSE_1.4.jpg "No PSNR")
 
 Une piste qui a été explorée a été d'utiliser des vidéos de stop motion, celles-ci offrant une plus grande varation entre chaques images que de la vidéo filmée. L'effet sur la différentiation entre les courbes reste très modeste. Néanmoins cela permet d'introduire le choix des métriques utilisées.
 La première intuition a été d'utiliser une Mean Square Error afin de comparer pixel par pixel (pour éviter les translations trop abrupts d'un objet par exemple). Cela donne des résultats d'apprentissages très convenables néanmoins la SSIM (Structural Similarity Index Measure) qui donne la similarité entre deux images dans leur construction et le PSNR (Peak Signal Noise Ratio) qui mesure la qualité de reconstruction d'une image ont également étaient testés pour l'apprentissage et gardés dans l'évaluation du modèle. 
 
 Un exemple d'apprentissage :
-Avec l'utilisation du PSNR comme loss ![PSNR descent](/images/training_curves/loss_curves_50ep_Adam_PSNR_1.1_BS7.png "PSNR descent")
+Avec l'utilisation du PSNR comme loss ![PSNR descent](/images/training_curves/loss_curves_50ep_Adam_PSNR_1.1_BS7.jpg "PSNR descent")
 
-Avec l'utilisation de la SSIM comme loss ![SSIM descent](/images/training_curves/loss_curves_50ep_Adam_SSIM_1.1_BS7.png "SSIM descent")
+Avec l'utilisation de la SSIM comme loss ![SSIM descent](/images/training_curves/loss_curves_50ep_Adam_SSIM_1.1_BS7.jpg "SSIM descent")
 
 ### Evaluation
 
