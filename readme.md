@@ -93,18 +93,7 @@ Avec l'utilisation de la SSIM comme loss ![SSIM descent](/images/training_curves
 
 ### Evaluation
 
-Le modèle final produit un résultat plutôt satisfaisant au visionnage des vidéos auxquels on a augmenté le nombre d'images. Néanmoins, les vidéos contenant ayant à l'origine une fréquence basse (e.g., stop motion) contiennent encore des images où la fusion d'une image sur l'autre se fait encore ressentir (par exemple par l'apparation d'un objet en transparence). On notera tout de même que le modèle a besoin d'un certains nombre d'epochs d'apprentissage pour bien 'rendre' les couleurs et il a fallu appliquer un léger traitement post-modèle sur des problématique de luminosité car le modèle a encore tendance a sortir des images très légèrement trop sombre. 
+Le modèle final produit un résultat plutôt satisfaisant au visionnage des vidéos auxquels on a augmenté le nombre d'images. Néanmoins, les vidéos ayant à l'origine une fréquence basse (e.g., stop motion) contiennent encore des images où la fusion d'une image sur l'autre se fait encore ressentir (par exemple par l'apparation d'un objet en transparence). On notera tout de même que le modèle a besoin d'un certains nombre d'epochs d'apprentissage pour bien 'rendre' les couleurs et il a fallu appliquer un léger traitement post-modèle sur des problématique de luminosité car le modèle a encore tendance a sortir des images très légèrement trop sombre. 
 
 Bien que son utilisation ai un champ limité, il est quand même intéressant de voir que le modèle arrive à ces performances avec une problématique de réduction importante de sa taille afin d'être utilisable sur une machine ayant des performances plutôt faible. Néanmoins, il serait intéressant d'essayer la mise en place d'un modèle capable de généraliser sur plusieurs vidéos afin d'éviter le temps d'apprentissage à chaque éxécutions. Une piste en ce sens serait d'utiliser une architecture à base de RNN ou de transformeurs qui sont plus efficaces lorsqu'il faut traiter des données qui ont une dimension temporelle. 
-
-
-
-
-
-
-
-### Historique du projet (A compléter)
-#### 04/12/2023 - Git creation
-
-On this day I have created the git repository to upload my first 'naive' tries. I had not used Git for 1 year so it was quite troublesome. This files were push on the 'naive' branch. It contained the files 'Freq_inc.py', 'open_images.py' and 'slice_vid.py'. The first one contains a naive model of convolution that aims to generate an image given 2 images from a video that was sliced by the 2 other files (slice_vid.py had better performances so we only used slice_vid).
  
